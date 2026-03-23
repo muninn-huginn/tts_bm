@@ -25,6 +25,7 @@ const fishAdapter: TTSProviderAdapter = {
       body: JSON.stringify({
         text,
         reference_id: config.referenceId || "default",
+        ...(config.model && { model: config.model }),
       }),
     });
   },
