@@ -13,6 +13,3 @@ export function getAdapter(id: string): TTSProviderAdapter | undefined {
 export function getAllAdapterIds(): string[] {
   return Array.from(adapters.keys());
 }
-
-// Adapters register themselves when imported.
-// Import this file after all adapters are loaded.

@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-polly": "^3.1014.0",
     "@neondatabase/serverless": "^1.0.2",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",
