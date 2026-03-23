@@ -24,7 +24,7 @@ const ABBREVIATIONS: Record<string, string> = {
   fish: "Fs",
 };
 
-type SortKey = "p50" | "p95" | "p99" | "totalTime" | "uptime";
+type SortKey = "p50" | "p95" | "p99" | "totalTime";
 
 export function ComparisonTable({ providers }: { providers: Provider[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("p50");
@@ -40,7 +40,6 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
         aVal = a.latest?.totalTimeMs || 0;
         bVal = b.latest?.totalTimeMs || 0;
         break;
-      case "uptime": aVal = a.stats.uptime24h; bVal = b.stats.uptime24h; break;
       default: aVal = 0; bVal = 0;
     }
     return sortAsc ? aVal - bVal : bVal - aVal;
@@ -51,7 +50,7 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
       setSortAsc(!sortAsc);
     } else {
       setSortKey(key);
-      setSortAsc(key !== "uptime"); // uptime sorts desc by default
+      setSortAsc(true);
     }
   }
 
@@ -76,9 +75,6 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
             </th>
             <th className={thNumClass} onClick={() => handleSort("totalTime")}>
               Total Time {sortKey === "totalTime" && (sortAsc ? "↑" : "↓")}
-            </th>
-            <th className={thNumClass} onClick={() => handleSort("uptime")}>
-              Uptime % {sortKey === "uptime" && (sortAsc ? "↑" : "↓")}
             </th>
             <th className={thClass + " text-center"} style={{ width: 60 }}>
               Status
@@ -123,19 +119,6 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
                       : `${p.latest.totalTimeMs}ms`
                     : <span className="text-text-muted">—</span>}
                 </td>
-                <td
-                  className="px-[18px] py-3.5 text-right font-mono text-[12px] font-medium"
-                  style={{
-                    color:
-                      p.stats.uptime24h >= 99
-                        ? undefined
-                        : p.stats.uptime24h >= 90
-                          ? "var(--yellow)"
-                          : "var(--red)",
-                  }}
-                >
-                  {p.stats.uptime24h > 0 ? `${p.stats.uptime24h}%` : <span className="text-text-muted">—</span>}
-                </td>
                 <td className="px-[18px] py-3.5 text-center">
                   <div
                     className="w-1.5 h-1.5 rounded-full mx-auto"
@@ -149,7 +132,7 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
           })}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-[18px] py-8 text-center text-text-muted text-sm">
+              <td colSpan={6} className="px-[18px] py-8 text-center text-text-muted text-sm">
                 No data yet
               </td>
             </tr>
