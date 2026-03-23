@@ -2,9 +2,11 @@
 
 import useSWR from "swr";
 import { Nav } from "./nav";
+import { HeroStats } from "./hero-stats";
 import { RankingStrip } from "./ranking-strip";
 import { TTFBChart } from "./ttfb-chart";
 import { ProviderSidebar } from "./provider-sidebar";
+import { LatencyVariation } from "./latency-variation";
 import { ComparisonTable } from "./comparison-table";
 import { useState } from "react";
 
@@ -56,8 +58,13 @@ export function Dashboard() {
       </div>
 
       <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-8">
+        {/* Hero Stats */}
+        <div className="animate-in" style={{ animationDelay: "0.03s" }}>
+          <HeroStats providers={ranked} />
+        </div>
+
         {/* Ranking Strip */}
-        <div className="animate-in" style={{ animationDelay: "0.05s" }}>
+        <div className="animate-in" style={{ animationDelay: "0.06s" }}>
           <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
             Ranked by avg TTFB · 3 runs per probe
           </div>
@@ -67,7 +74,7 @@ export function Dashboard() {
         {/* Chart + Sidebar */}
         <div
           className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 animate-in"
-          style={{ animationDelay: "0.1s" }}
+          style={{ animationDelay: "0.09s" }}
         >
           <TTFBChart
             data={historyData || []}
@@ -84,10 +91,18 @@ export function Dashboard() {
           <ProviderSidebar providers={ranked} />
         </div>
 
-        {/* Comparison Table */}
+        {/* Latency Variation */}
+        <div className="animate-in" style={{ animationDelay: "0.12s" }}>
+          <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
+            Latency Variation
+          </div>
+          <LatencyVariation providers={ranked} />
+        </div>
+
+        {/* Heatmap Table */}
         <div className="animate-in" style={{ animationDelay: "0.15s" }}>
           <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
-            Detailed Comparison
+            Performance Heatmap
           </div>
           <ComparisonTable providers={ranked} />
         </div>
@@ -96,7 +111,7 @@ export function Dashboard() {
       {/* Footer */}
       <footer
         className="max-w-[1200px] mx-auto px-8 py-8 mt-8 border-t border-border flex justify-between items-center animate-in"
-        style={{ animationDelay: "0.2s" }}
+        style={{ animationDelay: "0.18s" }}
       >
         <span className="text-xs text-text-muted">
           TTS Benchmark · 3 runs per provider · 5 probes daily
