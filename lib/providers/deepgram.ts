@@ -17,7 +17,7 @@ const deepgramAdapter: TTSProviderAdapter = {
     }
 
     const model = config.model || "aura-asteria-en";
-    const url = `https://api.deepgram.com/v1/speak?model=${model}`;
+    const url = `https://api.deepgram.com/v1/speak?model=${model}&encoding=linear16&container=wav&sample_rate=24000`;
 
     return measureHttpTTFB(url, {
       method: "POST",

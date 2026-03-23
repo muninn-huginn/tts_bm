@@ -11,7 +11,7 @@ import { useState } from "react";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function Dashboard() {
-  const [timeRange, setTimeRange] = useState("1h");
+  const [timeRange, setTimeRange] = useState("7d");
   const [customRange, setCustomRange] = useState<{
     start: string;
     end: string;
