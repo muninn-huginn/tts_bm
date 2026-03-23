@@ -2,7 +2,7 @@ import { probeConfig } from "@/config/probe";
 
 const { statusThresholds } = probeConfig;
 
-export type ProviderStatus = "healthy" | "degraded" | "down";
+export type ProviderStatus = "good" | "fair" | "bad";
 
 /**
  * Calculate provider status based on TTFB, error rate, and recent probe results.
@@ -12,31 +12,29 @@ export function calculateStatus(
   errorRate: number,
   lastNStatusCodes: number[]
 ): ProviderStatus {
-  // Down: last 3 probes all failed
+  // Bad: last 3 probes all failed
   if (
     lastNStatusCodes.length >= 3 &&
-    lastNStatusCodes
-      .slice(0, 3)
-      .every((code) => code >= 400 || code === 0)
+    lastNStatusCodes.slice(0, 3).every((code) => code >= 400 || code === 0)
   ) {
-    return "down";
+    return "bad";
   }
 
-  // Down: high error rate or very high TTFB
+  // Bad: high error rate or very high TTFB
   if (
-    errorRate > statusThresholds.errorRateDegraded ||
-    p50 >= statusThresholds.degradedTtfbMs
+    errorRate > statusThresholds.errorRateFair ||
+    p50 >= statusThresholds.fairTtfbMs
   ) {
-    return "down";
+    return "bad";
   }
 
-  // Degraded: moderate error rate or elevated TTFB
+  // Fair: moderate error rate or elevated TTFB
   if (
-    errorRate > statusThresholds.errorRateHealthy ||
-    p50 >= statusThresholds.healthyTtfbMs
+    errorRate > statusThresholds.errorRateGood ||
+    p50 >= statusThresholds.goodTtfbMs
   ) {
-    return "degraded";
+    return "fair";
   }
 
-  return "healthy";
+  return "good";
 }

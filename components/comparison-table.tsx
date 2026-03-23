@@ -11,21 +11,16 @@ interface Provider {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  healthy: "var(--green)",
-  degraded: "var(--yellow)",
-  down: "var(--red)",
+  good: "var(--green)",
+  fair: "var(--yellow)",
+  bad: "var(--red)",
 };
 
 const ABBREVIATIONS: Record<string, string> = {
-  cartesia: "Ca",
+  "cartesia-sonic3": "S3",
+  "cartesia-turbo": "ST",
   elevenlabs: "EL",
-  openai: "OA",
-  google: "Go",
-  polly: "Po",
-  azure: "Az",
   deepgram: "Dg",
-  playht: "PH",
-  lmnt: "LM",
   fish: "Fs",
 };
 
@@ -93,9 +88,9 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
         <tbody>
           {sorted.map((p) => {
             const rowBg =
-              p.status === "degraded"
+              p.status === "fair"
                 ? "bg-[rgba(217,119,6,0.02)]"
-                : p.status === "down"
+                : p.status === "bad"
                   ? "bg-[rgba(220,38,38,0.02)]"
                   : "";
 

@@ -321,6 +321,75 @@ export async function getUptimeTicks(providerId: string) {
   });
 }
 
+/**
+ * Get the latest batch of probe results per provider.
+ * Returns individual runs + average for the most recent batch.
+ */
+export async function getLatestBatchRuns() {
+  const enabledProviders = providers.filter((p) => p.enabled);
+
+  const results = await Promise.all(
+    enabledProviders.map(async (provider) => {
+      // Get the latest batch_id for this provider
+      const [latestRow] = await db
+        .select({ batchId: probeResults.batchId })
+        .from(probeResults)
+        .where(
+          and(
+            eq(probeResults.providerId, provider.id),
+            isNotNull(probeResults.batchId)
+          )
+        )
+        .orderBy(desc(probeResults.timestamp))
+        .limit(1);
+
+      if (!latestRow?.batchId) return { providerId: provider.id, runs: [], avgTtfb: 0, avgTotalTime: 0 };
+
+      const runs = await db
+        .select({
+          runIndex: probeResults.runIndex,
+          ttfbMs: probeResults.ttfbMs,
+          totalTimeMs: probeResults.totalTimeMs,
+          statusCode: probeResults.statusCode,
+          errorMessage: probeResults.errorMessage,
+          timestamp: probeResults.timestamp,
+        })
+        .from(probeResults)
+        .where(
+          and(
+            eq(probeResults.providerId, provider.id),
+            eq(probeResults.batchId, latestRow.batchId)
+          )
+        )
+        .orderBy(probeResults.runIndex);
+
+      const successful = runs.filter((r) => r.statusCode >= 200 && r.statusCode < 300);
+      const avgTtfb = successful.length > 0
+        ? Math.round(successful.reduce((s, r) => s + r.ttfbMs, 0) / successful.length)
+        : 0;
+      const avgTotalTime = successful.length > 0
+        ? Math.round(successful.reduce((s, r) => s + r.totalTimeMs, 0) / successful.length)
+        : 0;
+
+      return {
+        providerId: provider.id,
+        runs: runs.map((r) => ({
+          runIndex: r.runIndex,
+          ttfbMs: r.ttfbMs,
+          totalTimeMs: r.totalTimeMs,
+          statusCode: r.statusCode,
+          errorMessage: r.errorMessage,
+          timestamp: r.timestamp.toISOString(),
+        })),
+        avgTtfb,
+        avgTotalTime,
+      };
+    })
+  );
+
+  return results;
+}
+
 // Helper: calculate percentile from sorted array
 function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;

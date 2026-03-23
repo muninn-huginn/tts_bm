@@ -6,7 +6,6 @@ import { RankingStrip } from "./ranking-strip";
 import { TTFBChart } from "./ttfb-chart";
 import { ProviderSidebar } from "./provider-sidebar";
 import { ComparisonTable } from "./comparison-table";
-import { ErrorList } from "./error-list";
 import { useState } from "react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -33,11 +32,13 @@ export function Dashboard() {
   const providers = resultsData?.providers || [];
   const updatedAt = resultsData?.updatedAt;
 
-  // Sort by p50 for ranking
+  // Sort by average TTFB from batch, falling back to p50
   const ranked = [...providers].sort(
-    (a: Record<string, unknown>, b: Record<string, unknown>) =>
-      ((a.stats as { p50: number })?.p50 || Infinity) -
-      ((b.stats as { p50: number })?.p50 || Infinity)
+    (a: Record<string, unknown>, b: Record<string, unknown>) => {
+      const aVal = (a.batch as { avgTtfb: number })?.avgTtfb || (a.stats as { p50: number })?.p50 || Infinity;
+      const bVal = (b.batch as { avgTtfb: number })?.avgTtfb || (b.stats as { p50: number })?.p50 || Infinity;
+      return aVal - bVal;
+    }
   );
 
   return (
@@ -58,7 +59,7 @@ export function Dashboard() {
         {/* Ranking Strip */}
         <div className="animate-in" style={{ animationDelay: "0.05s" }}>
           <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
-            Ranked by TTFB · p50 · Last hour
+            Ranked by avg TTFB · 3 runs per probe
           </div>
           <RankingStrip providers={ranked} />
         </div>
@@ -90,23 +91,18 @@ export function Dashboard() {
           </div>
           <ComparisonTable providers={ranked} />
         </div>
-
-        {/* Errors */}
-        <div className="animate-in" style={{ animationDelay: "0.2s" }}>
-          <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
-            Recent Errors
-          </div>
-          <ErrorList />
-        </div>
       </div>
 
       {/* Footer */}
-      <footer className="max-w-[1200px] mx-auto px-8 py-8 mt-8 border-t border-border flex justify-between items-center animate-in" style={{ animationDelay: "0.25s" }}>
+      <footer
+        className="max-w-[1200px] mx-auto px-8 py-8 mt-8 border-t border-border flex justify-between items-center animate-in"
+        style={{ animationDelay: "0.2s" }}
+      >
         <span className="text-xs text-text-muted">
-          TTS Benchmark · Probing 10 providers every 1–15 min
+          TTS Benchmark · 3 runs per provider · 5 probes daily
         </span>
         <a
-          href="https://github.com"
+          href="https://github.com/muninn-huginn/tts_bm"
           className="text-xs text-text-muted hover:text-text-primary transition-colors"
         >
           GitHub

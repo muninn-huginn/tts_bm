@@ -5,12 +5,13 @@ interface Provider {
   name: string;
   status: string;
   stats: { p50: number; p95: number; p99: number; uptime24h: number };
+  batch?: { avgTtfb: number } | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  healthy: "var(--green)",
-  degraded: "var(--yellow)",
-  down: "var(--red)",
+  good: "var(--green)",
+  fair: "var(--yellow)",
+  bad: "var(--red)",
 };
 
 export function ProviderSidebar({ providers }: { providers: Provider[] }) {
@@ -20,7 +21,7 @@ export function ProviderSidebar({ providers }: { providers: Provider[] }) {
         <span className="text-[13px] font-semibold text-text-primary">
           Provider Rankings
         </span>
-        <span className="text-[11px] text-text-muted">p50 · 1h</span>
+        <span className="text-[11px] text-text-muted">avg TTFB</span>
       </div>
 
       {providers.map((p, i) => (
@@ -41,15 +42,13 @@ export function ProviderSidebar({ providers }: { providers: Provider[] }) {
               p95 {p.stats.p95 > 0 ? p.stats.p95 : "—"}
             </span>
             <span className="text-[13px] font-mono font-medium text-text-primary min-w-[52px] text-right">
-              {p.stats.p50 > 0 ? `${p.stats.p50}ms` : (
-                <span style={{ color: "var(--red)" }}>down</span>
+              {(p.batch?.avgTtfb || p.stats.p50) > 0 ? `${p.batch?.avgTtfb || p.stats.p50}ms` : (
+                <span style={{ color: "var(--red)" }}>bad</span>
               )}
             </span>
             <div
               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{
-                background: STATUS_COLORS[p.status] || "var(--text-faint)",
-              }}
+              style={{ background: STATUS_COLORS[p.status] || "var(--text-faint)" }}
             />
           </div>
         </div>

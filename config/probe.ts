@@ -18,11 +18,12 @@ export const probeConfig = {
   defaultIntervalSeconds: 300,
   retentionDays: 30,
   probeTimeoutMs: 30_000,
+  runsPerProbe: 3,
 
   statusThresholds: {
-    healthyTtfbMs: 200,
-    degradedTtfbMs: 500,
-    errorRateHealthy: 0.05,
-    errorRateDegraded: 0.2,
+    goodTtfbMs: 1000,
+    fairTtfbMs: 3000,
+    errorRateGood: 0.05,
+    errorRateFair: 0.20,
   },
 };

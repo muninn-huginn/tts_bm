@@ -8,6 +8,13 @@
       "when": 1774260804142,
       "tag": "0000_lethal_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774270575011,
+      "tag": "0001_superb_juggernaut",
+      "breakpoints": true
     }
   ]
 }

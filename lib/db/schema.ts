@@ -22,6 +22,8 @@ export const probeResults = pgTable(
     statusCode: integer("status_code").notNull(),
     errorMessage: text("error_message"),
     region: text("region"),
+    batchId: text("batch_id"),
+    runIndex: integer("run_index"),
   },
   (table) => [
     index("idx_provider_timestamp").on(table.providerId, table.timestamp),
