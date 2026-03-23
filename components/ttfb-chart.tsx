@@ -134,10 +134,11 @@ export function TTFBChart({
                   fontFamily: "var(--font-mono)",
                 }}
                 labelFormatter={(ts) => new Date(ts).toLocaleTimeString()}
-                formatter={(value: number, name: string) => [
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={((value: any, name: any) => [
                   `${value}ms`,
-                  nameMap.get(name) || name,
-                ]}
+                  nameMap.get(String(name)) || String(name),
+                ]) as any}
               />
               {activeProviders.map((id, i) => (
                 <Line

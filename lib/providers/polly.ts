@@ -32,17 +32,10 @@ const pollyAdapter: TTSProviderAdapter = {
       const command = new SynthesizeSpeechCommand({
         Text: text,
         OutputFormat: "mp3",
-        VoiceId: config.voice || "Matthew",
+        VoiceId: (config.voice || "Matthew") as import("@aws-sdk/client-polly").VoiceId,
         Engine: "neural",
       });
 
-      const response = await command.resolveMiddleware(
-        () => {} as never,
-        client.config,
-        undefined as never
-      ).catch(() => null);
-
-      // Use send for simplicity
       const result = await client.send(command);
 
       const ttfbMs = Math.round(performance.now() - startTime);
