@@ -16,11 +16,13 @@ const cartesiaAdapter: TTSProviderAdapter = {
       };
     }
 
-    return measureHttpTTFB("https://api.cartesia.ai/tts/bytes", {
+    // Use SSE streaming endpoint for lowest TTFB (not /tts/bytes which waits for full audio)
+    // Use raw PCM format to avoid encoding overhead on first chunk
+    return measureHttpTTFB("https://api.cartesia.ai/tts/sse", {
       method: "POST",
       headers: {
         "X-API-Key": apiKey,
-        "Cartesia-Version": "2024-06-10",
+        "Cartesia-Version": "2025-04-16",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -31,9 +33,9 @@ const cartesiaAdapter: TTSProviderAdapter = {
           id: config.voice || "a0e99841-438c-4a64-b679-ae501e7d6091",
         },
         output_format: {
-          container: "mp3",
-          bit_rate: 128000,
-          sample_rate: 44100,
+          container: "raw",
+          encoding: "pcm_s16le",
+          sample_rate: 24000,
         },
       }),
     });
