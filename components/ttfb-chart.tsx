@@ -1,15 +1,15 @@
 "use client";
 
 import {
-  BarChart,
-  Bar,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
-  ReferenceLine,
+  ZAxis,
+  Line,
 } from "recharts";
 import { TimeRangePicker } from "./time-range-picker";
 import { providers as providerConfig } from "@/config/providers";
@@ -48,23 +48,9 @@ export function TTFBChart({
   onTimeRangeChange,
   onCustomRange,
 }: TTFBChartProps) {
-  // Group data into probe sessions (batches).
-  // Each session = all probes within a ~2min window across providers.
-  // Then for each session, show a grouped bar per provider.
+  const activeProviders = data.filter((d) => d.points.length > 0);
 
-  // Collect all data points with timestamps
-  const allPoints: { providerId: string; timestamp: number; ttfbMs: number }[] = [];
-  for (const provider of data) {
-    for (const point of provider.points) {
-      allPoints.push({
-        providerId: provider.providerId,
-        timestamp: new Date(point.timestamp).getTime(),
-        ttfbMs: point.ttfbMs,
-      });
-    }
-  }
-
-  if (allPoints.length === 0) {
+  if (activeProviders.length === 0) {
     return (
       <div className="bg-surface border border-border rounded-[10px] shadow-sm overflow-hidden">
         <div className="px-[22px] pt-[18px] pb-[14px] flex items-center justify-between">
@@ -78,39 +64,50 @@ export function TTFBChart({
     );
   }
 
-  // Group into sessions by clustering timestamps within 5-minute windows
-  allPoints.sort((a, b) => a.timestamp - b.timestamp);
-  const sessions: { timestamp: number; label: string; providers: Record<string, number[]> }[] = [];
+  // Group points into probe sessions (cluster within 5 min) and compute avg per provider per session
+  const allPoints: { providerId: string; ts: number; ttfbMs: number }[] = [];
+  for (const p of activeProviders) {
+    for (const pt of p.points) {
+      allPoints.push({ providerId: p.providerId, ts: new Date(pt.timestamp).getTime(), ttfbMs: pt.ttfbMs });
+    }
+  }
+  allPoints.sort((a, b) => a.ts - b.ts);
 
-  for (const point of allPoints) {
-    const lastSession = sessions[sessions.length - 1];
-    if (lastSession && Math.abs(point.timestamp - lastSession.timestamp) < 5 * 60 * 1000) {
-      if (!lastSession.providers[point.providerId]) lastSession.providers[point.providerId] = [];
-      lastSession.providers[point.providerId].push(point.ttfbMs);
+  // Cluster into sessions
+  type Session = { ts: number; providers: Record<string, number[]> };
+  const sessions: Session[] = [];
+  for (const pt of allPoints) {
+    const last = sessions[sessions.length - 1];
+    if (last && Math.abs(pt.ts - last.ts) < 5 * 60 * 1000) {
+      if (!last.providers[pt.providerId]) last.providers[pt.providerId] = [];
+      last.providers[pt.providerId].push(pt.ttfbMs);
     } else {
-      const d = new Date(point.timestamp);
-      const label = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-      sessions.push({
-        timestamp: point.timestamp,
-        label,
-        providers: { [point.providerId]: [point.ttfbMs] },
-      });
+      sessions.push({ ts: pt.ts, providers: { [pt.providerId]: [pt.ttfbMs] } });
     }
   }
 
-  // Build chart data: each session becomes a bar group with avg per provider
-  const activeProviders = [...new Set(data.filter((d) => d.points.length > 0).map((d) => d.providerId))];
+  // Build per-provider scatter data (one dot per session = avg of runs)
+  const providerData: Record<string, { x: number; y: number; runs: number[]; label: string }[]> = {};
+  for (const session of sessions) {
+    const d = new Date(session.ts);
+    const label = `${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getDate().toString().padStart(2, "0")} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 
-  const chartData = sessions.map((session) => {
-    const entry: Record<string, unknown> = { label: session.label, timestamp: session.timestamp };
-    for (const pid of activeProviders) {
-      const runs = session.providers[pid] || [];
-      entry[pid] = runs.length > 0 ? Math.round(runs.reduce((a, b) => a + b, 0) / runs.length) : null;
-      // Also store individual runs for tooltip
-      entry[`${pid}_runs`] = runs;
+    for (const pid of activeProviders.map((p) => p.providerId)) {
+      const runs = session.providers[pid];
+      if (runs && runs.length > 0) {
+        const avg = Math.round(runs.reduce((a, b) => a + b, 0) / runs.length);
+        if (!providerData[pid]) providerData[pid] = [];
+        providerData[pid].push({ x: session.ts, y: avg, runs, label });
+      }
     }
-    return entry;
-  });
+  }
+
+  // Compute domain
+  const allY = Object.values(providerData).flat().map((d) => d.y);
+  const allX = Object.values(providerData).flat().map((d) => d.x);
+  const yMax = Math.max(...allY) * 1.15;
+  const xMin = Math.min(...allX);
+  const xMax = Math.max(...allX);
 
   return (
     <div className="bg-surface border border-border rounded-[10px] shadow-sm overflow-hidden">
@@ -123,16 +120,25 @@ export function TTFBChart({
 
       <div className="px-[22px] pb-[18px] h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} barGap={2} barCategoryGap="20%">
+          <ScatterChart margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="0" stroke="var(--border-subtle)" vertical={false} />
             <XAxis
-              dataKey="label"
+              dataKey="x"
+              type="number"
+              domain={[xMin, xMax]}
+              tickFormatter={(ts) => {
+                const d = new Date(ts);
+                return `${(d.getMonth() + 1)}/${d.getDate()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+              }}
               stroke="var(--text-faint)"
               tick={{ fontSize: 10, fontFamily: "var(--font-mono)" }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
+              dataKey="y"
+              type="number"
+              domain={[0, yMax]}
               stroke="var(--text-faint)"
               tick={{ fontSize: 10, fontFamily: "var(--font-mono)" }}
               tickFormatter={(v) => `${v}ms`}
@@ -140,66 +146,74 @@ export function TTFBChart({
               tickLine={false}
               width={55}
             />
+            <ZAxis range={[40, 40]} />
             <Tooltip
-              contentStyle={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontFamily: "var(--font-mono)",
-                padding: "12px",
-              }}
-              content={({ active, payload, label }) => {
+              content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
+                const d = payload[0]?.payload as { y: number; runs: number[]; label: string } | undefined;
+                if (!d) return null;
+                const pid = (payload[0] as unknown as { name: string })?.name;
                 return (
-                  <div style={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                    fontFamily: "var(--font-mono)",
-                    padding: "12px",
-                    lineHeight: "1.8",
-                  }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4, fontFamily: "var(--font-sans)", color: "var(--text-primary)" }}>{label}</div>
-                    {payload.map((entry) => {
-                      const pid = entry.dataKey as string;
-                      const runs = (entry.payload as Record<string, unknown>)[`${pid}_runs`] as number[] | undefined;
-                      return (
-                        <div key={pid} style={{ color: entry.color }}>
-                          <span style={{ fontFamily: "var(--font-sans)" }}>{nameMap.get(pid) || pid}:</span>{" "}
-                          <strong>{entry.value}ms</strong>
-                          {runs && runs.length > 1 && (
-                            <span style={{ color: "var(--text-muted)", fontSize: 10 }}>
-                              {" "}({runs.map((r) => `${r}`).join(", ")})
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      padding: "10px 12px",
+                      lineHeight: "1.7",
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
+                      {d.label}
+                    </div>
+                    <div style={{ color: COLORS[pid] || "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
+                      {nameMap.get(pid) || pid}: <strong>{d.y}ms</strong>
+                      {d.runs.length > 1 && (
+                        <span style={{ color: "var(--text-muted)", fontSize: 10 }}>
+                          {" "}({d.runs.join(", ")})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               }}
             />
-            {activeProviders.map((pid) => (
-              <Bar
-                key={pid}
-                dataKey={pid}
-                name={nameMap.get(pid) || pid}
-                fill={COLORS[pid] || "var(--text-muted)"}
-                radius={[3, 3, 0, 0]}
-                maxBarSize={40}
-              />
-            ))}
-          </BarChart>
+            {activeProviders.map((p) => {
+              const points = providerData[p.providerId] || [];
+              const color = COLORS[p.providerId] || "var(--text-muted)";
+
+              return (
+                <Scatter
+                  key={p.providerId}
+                  name={p.providerId}
+                  data={points}
+                  fill={color}
+                  line={{ stroke: color, strokeWidth: 1.5, strokeOpacity: 0.4 }}
+                  lineType="joint"
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  shape={((props: any) => (
+                    <circle
+                      cx={props.cx}
+                      cy={props.cy}
+                      r={4}
+                      fill={color}
+                      stroke="var(--surface)"
+                      strokeWidth={1.5}
+                    />
+                  )) as any}
+                />
+              );
+            })}
+          </ScatterChart>
         </ResponsiveContainer>
       </div>
 
       <div className="px-[22px] pb-[18px] flex flex-wrap gap-3.5">
-        {activeProviders.map((id) => (
-          <div key={id} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-            <div className="w-2 h-2 rounded-[2px]" style={{ background: COLORS[id] || "var(--text-muted)" }} />
-            {nameMap.get(id) || id}
+        {activeProviders.map((p) => (
+          <div key={p.providerId} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+            <div className="w-2 h-2 rounded-[2px]" style={{ background: COLORS[p.providerId] || "var(--text-muted)" }} />
+            {nameMap.get(p.providerId) || p.providerId}
           </div>
         ))}
       </div>

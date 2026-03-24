@@ -25,7 +25,7 @@ const ABBREVIATIONS: Record<string, string> = {
   fish: "Fs",
 };
 
-type SortKey = "avgTtfb" | "p50" | "p95" | "p99" | "totalTime" | "spread";
+type SortKey = "avgTtfb" | "p50" | "p95" | "p99" | "spread";
 
 /**
  * Map a value to a heatmap color.
@@ -88,7 +88,6 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
       case "p50": aVal = a.stats.p50; bVal = b.stats.p50; break;
       case "p95": aVal = a.stats.p95; bVal = b.stats.p95; break;
       case "p99": aVal = a.stats.p99; bVal = b.stats.p99; break;
-      case "totalTime": aVal = a.avgTotalTime; bVal = b.avgTotalTime; break;
       case "spread": aVal = a.spread; bVal = b.spread; break;
       default: aVal = 0; bVal = 0;
     }
@@ -101,7 +100,6 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
     p50: { min: Math.min(...rows.map((r) => r.stats.p50).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p50)) },
     p95: { min: Math.min(...rows.map((r) => r.stats.p95).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p95)) },
     p99: { min: Math.min(...rows.map((r) => r.stats.p99).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p99)) },
-    totalTime: { min: Math.min(...rows.map((r) => r.avgTotalTime).filter(Boolean)), max: Math.max(...rows.map((r) => r.avgTotalTime)) },
     spread: { min: Math.min(...rows.map((r) => r.spread)), max: Math.max(...rows.map((r) => r.spread)) },
   };
 
@@ -149,9 +147,6 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
             <th className={thBase + " text-center"} onClick={() => handleSort("p99")}>
               P99{sortIndicator("p99")}
             </th>
-            <th className={thBase + " text-center"} onClick={() => handleSort("totalTime")}>
-              Total Time{sortIndicator("totalTime")}
-            </th>
             <th className={thBase + " text-center"} onClick={() => handleSort("spread")}>
               Spread{sortIndicator("spread")}
             </th>
@@ -182,13 +177,12 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
               <td className="px-[14px] py-3">{renderCell(p.stats.p50, ranges.p50)}</td>
               <td className="px-[14px] py-3">{renderCell(p.stats.p95, ranges.p95)}</td>
               <td className="px-[14px] py-3">{renderCell(p.stats.p99, ranges.p99)}</td>
-              <td className="px-[14px] py-3">{renderCell(p.avgTotalTime, ranges.totalTime)}</td>
               <td className="px-[14px] py-3">{renderCell(p.spread, ranges.spread)}</td>
             </tr>
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-[18px] py-8 text-center text-text-muted text-sm">
+              <td colSpan={6} className="px-[18px] py-8 text-center text-text-muted text-sm">
                 No data yet
               </td>
             </tr>
