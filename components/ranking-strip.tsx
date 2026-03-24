@@ -16,15 +16,15 @@ interface Provider {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  good: "var(--green)",
-  fair: "var(--yellow)",
-  bad: "var(--red)",
+  good: "#00A861",
+  fair: "#D97706",
+  bad: "#DC2626",
 };
 
 const STATUS_BG: Record<string, string> = {
-  good: "var(--green-bg)",
-  fair: "var(--yellow-bg)",
-  bad: "var(--red-bg)",
+  good: "rgba(0, 168, 97, 0.08)",
+  fair: "rgba(217, 119, 6, 0.08)",
+  bad: "rgba(220, 38, 38, 0.08)",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -43,89 +43,81 @@ export function RankingStrip({ providers }: { providers: Provider[] }) {
   }
 
   return (
-    <div className="flex gap-px bg-border rounded-[10px] overflow-x-auto shadow-sm">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
       {providers.map((p, i) => {
         const avgTtfb = p.batch?.avgTtfb ?? p.stats.p50;
         const runs = p.batch?.runs || [];
+        const color = STATUS_COLORS[p.status] || "#999";
 
         return (
           <div
             key={p.id}
-            className="flex-1 min-w-[180px] bg-surface p-5 relative hover:bg-surface-hover transition-colors first:rounded-l-[10px] last:rounded-r-[10px]"
+            className="bg-surface border border-border rounded-[10px] p-5 relative hover:shadow-md transition-shadow overflow-hidden"
           >
-            <div className="text-[10px] font-semibold text-text-faint font-mono mb-2.5">
-              #{i + 1}
+            {/* Top accent bar */}
+            <div
+              className="absolute top-0 left-0 right-0 h-[2px]"
+              style={{ background: color }}
+            />
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-semibold text-text-faint font-mono">
+                #{i + 1}
+              </span>
+              <span
+                className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                style={{ color, background: STATUS_BG[p.status] || "transparent" }}
+              >
+                {STATUS_LABEL[p.status] || "—"}
+              </span>
             </div>
-            <div className="text-[13px] font-semibold text-text-primary mb-0.5">
+
+            <div className="text-[12px] font-semibold text-text-primary mb-1 truncate">
               {p.name}
             </div>
 
-            {/* Average TTFB */}
-            <div className="text-[28px] font-bold tracking-[-1px] text-text-primary font-mono leading-none">
-              {avgTtfb > 0 ? (
-                <>
-                  {avgTtfb}
-                  <span className="text-[13px] font-medium text-text-muted tracking-normal ml-0.5">
-                    ms
-                  </span>
-                </>
-              ) : (
-                "—"
+            <div className="text-[32px] font-bold tracking-[-1.5px] text-text-primary font-mono leading-none">
+              {avgTtfb > 0 ? avgTtfb : "—"}
+              {avgTtfb > 0 && (
+                <span className="text-[14px] font-medium text-text-muted tracking-normal ml-0.5">
+                  ms
+                </span>
               )}
             </div>
-            <div className="text-[10px] text-text-faint mt-0.5">avg of {runs.length || "—"} runs</div>
 
-            {/* Individual runs bar chart */}
+            {/* Run bars */}
             {runs.length > 0 && (
-              <div className="flex items-end gap-1 mt-3 h-[28px]">
-                {runs.map((run, j) => {
-                  const maxTtfb = Math.max(...runs.map((r) => r.ttfbMs), 1);
-                  const height = Math.max((run.ttfbMs / maxTtfb) * 100, 8);
-                  return (
-                    <div key={j} className="flex-1 flex flex-col items-center gap-0.5">
+              <div className="mt-4">
+                <div className="flex items-end gap-[3px] h-[32px]">
+                  {runs.map((run, j) => {
+                    const maxTtfb = Math.max(...runs.map((r) => r.ttfbMs), 1);
+                    const height = Math.max((run.ttfbMs / maxTtfb) * 100, 12);
+                    return (
                       <div
-                        className="w-full rounded-t-[2px] transition-all"
+                        key={j}
+                        className="flex-1 rounded-[3px] transition-all"
                         style={{
                           height: `${height}%`,
-                          background: STATUS_COLORS[p.status] || "var(--text-faint)",
-                          opacity: 0.6 + j * 0.15,
+                          background: color,
+                          opacity: 0.25 + j * 0.25,
                         }}
                         title={`Run ${run.runIndex}: ${run.ttfbMs}ms`}
                       />
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                <div className="flex gap-[3px] mt-1.5">
+                  {runs.map((run, j) => (
+                    <span
+                      key={j}
+                      className="flex-1 text-center text-[9px] font-mono text-text-faint"
+                    >
+                      {run.ttfbMs}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
-            {runs.length > 0 && (
-              <div className="flex gap-1 mt-1">
-                {runs.map((run, j) => (
-                  <span key={j} className="flex-1 text-center text-[9px] font-mono text-text-faint">
-                    {run.ttfbMs}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Status badge */}
-            <div
-              className="inline-flex items-center gap-[5px] mt-2.5 text-[11px] font-medium px-2 py-[3px] rounded-full"
-              style={{
-                color: STATUS_COLORS[p.status] || "var(--text-muted)",
-                background: STATUS_BG[p.status] || "var(--surface-hover)",
-              }}
-            >
-              <span
-                className="w-[5px] h-[5px] rounded-full"
-                style={{ background: STATUS_COLORS[p.status] || "var(--text-muted)" }}
-              />
-              {STATUS_LABEL[p.status] || "Unknown"}
-            </div>
-
-            <div
-              className="absolute bottom-0 left-5 right-5 h-[3px] rounded-t-[3px] opacity-80"
-              style={{ background: STATUS_COLORS[p.status] || "var(--text-faint)" }}
-            />
           </div>
         );
       })}
