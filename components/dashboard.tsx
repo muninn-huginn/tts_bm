@@ -7,6 +7,7 @@ import { RankingStrip } from "./ranking-strip";
 import { TTFBChart } from "./ttfb-chart";
 import { ProviderSidebar } from "./provider-sidebar";
 import { LatencyVariation } from "./latency-variation";
+import { TimeOfDayChart } from "./time-of-day-chart";
 import { ComparisonTable } from "./comparison-table";
 import { useState } from "react";
 
@@ -97,6 +98,14 @@ export function Dashboard() {
             Latency Variation
           </div>
           <LatencyVariation providers={ranked} />
+        </div>
+
+        {/* Time of Day */}
+        <div className="animate-in" style={{ animationDelay: "0.14s" }}>
+          <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
+            TTFB by Time of Day
+          </div>
+          <TimeOfDayChart data={historyData || []} />
         </div>
 
         {/* Heatmap Table */}

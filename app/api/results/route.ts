@@ -37,7 +37,11 @@ export async function GET() {
           : null,
       };
     }),
-    updatedAt: new Date().toISOString(),
+    updatedAt: results
+      .map((r) => r.latest?.timestamp)
+      .filter(Boolean)
+      .sort()
+      .pop() || new Date().toISOString(),
   };
 
   return Response.json(response, {
