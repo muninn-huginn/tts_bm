@@ -3,13 +3,15 @@
 import useSWR from "swr";
 import { Nav } from "./nav";
 import { HeroStats } from "./hero-stats";
+import { ProviderFilter } from "./provider-filter";
 import { RankingStrip } from "./ranking-strip";
 import { TTFBChart } from "./ttfb-chart";
 import { ProviderSidebar } from "./provider-sidebar";
 import { LatencyVariation } from "./latency-variation";
 import { TimeOfDayChart } from "./time-of-day-chart";
 import { ComparisonTable } from "./comparison-table";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { providers as providerConfig } from "@/config/providers";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -19,6 +21,24 @@ export function Dashboard() {
     start: string;
     end: string;
   } | null>(null);
+
+  // Provider filter — all selected by default
+  const allIds = useMemo(() => new Set(providerConfig.filter((p) => p.enabled).map((p) => p.id)), []);
+  const [selectedProviders, setSelectedProviders] = useState<Set<string>>(allIds);
+
+  function toggleProvider(id: string) {
+    setSelectedProviders((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        // Don't allow deselecting all
+        if (next.size <= 1) return prev;
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   const { data: resultsData } = useSWR("/api/results", fetcher, {
     refreshInterval: 60_000,
@@ -44,6 +64,12 @@ export function Dashboard() {
     }
   );
 
+  // Filtered views
+  const filteredRanked = ranked.filter((p: { id: string }) => selectedProviders.has(p.id));
+  const filteredHistory = (historyData || []).filter(
+    (p: { providerId: string }) => selectedProviders.has(p.providerId)
+  );
+
   return (
     <>
       <Nav lastUpdated={updatedAt} />
@@ -59,9 +85,17 @@ export function Dashboard() {
       </div>
 
       <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-8">
+        {/* Provider Filter */}
+        <div className="animate-in flex items-center gap-3" style={{ animationDelay: "0.02s" }}>
+          <span className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] flex-shrink-0">
+            Providers
+          </span>
+          <ProviderFilter selected={selectedProviders} onToggle={toggleProvider} />
+        </div>
+
         {/* Hero Stats */}
-        <div className="animate-in" style={{ animationDelay: "0.03s" }}>
-          <HeroStats providers={ranked} />
+        <div className="animate-in" style={{ animationDelay: "0.04s" }}>
+          <HeroStats providers={filteredRanked} />
         </div>
 
         {/* Ranking Strip */}
@@ -69,16 +103,16 @@ export function Dashboard() {
           <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
             Ranked by avg TTFB · 3 runs per probe
           </div>
-          <RankingStrip providers={ranked} />
+          <RankingStrip providers={filteredRanked} />
         </div>
 
         {/* Chart + Sidebar */}
         <div
           className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 animate-in"
-          style={{ animationDelay: "0.09s" }}
+          style={{ animationDelay: "0.08s" }}
         >
           <TTFBChart
-            data={historyData || []}
+            data={filteredHistory}
             timeRange={timeRange}
             onTimeRangeChange={(range) => {
               setCustomRange(null);
@@ -89,38 +123,38 @@ export function Dashboard() {
               setTimeRange("custom");
             }}
           />
-          <ProviderSidebar providers={ranked} />
+          <ProviderSidebar providers={filteredRanked} />
         </div>
 
         {/* Latency Variation */}
-        <div className="animate-in" style={{ animationDelay: "0.12s" }}>
+        <div className="animate-in" style={{ animationDelay: "0.10s" }}>
           <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
             Latency Variation
           </div>
-          <LatencyVariation providers={ranked} />
+          <LatencyVariation providers={filteredRanked} />
         </div>
 
         {/* Time of Day */}
-        <div className="animate-in" style={{ animationDelay: "0.14s" }}>
+        <div className="animate-in" style={{ animationDelay: "0.12s" }}>
           <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
             TTFB by Time of Day
           </div>
-          <TimeOfDayChart data={historyData || []} />
+          <TimeOfDayChart data={filteredHistory} />
         </div>
 
         {/* Heatmap Table */}
-        <div className="animate-in" style={{ animationDelay: "0.15s" }}>
+        <div className="animate-in" style={{ animationDelay: "0.14s" }}>
           <div className="text-[11px] font-semibold text-text-muted uppercase tracking-[0.08em] mb-3.5">
             Performance Heatmap
           </div>
-          <ComparisonTable providers={ranked} />
+          <ComparisonTable providers={filteredRanked} />
         </div>
       </div>
 
       {/* Footer */}
       <footer
         className="max-w-[1200px] mx-auto px-8 py-8 mt-8 border-t border-border flex justify-between items-center animate-in"
-        style={{ animationDelay: "0.18s" }}
+        style={{ animationDelay: "0.16s" }}
       >
         <span className="text-xs text-text-muted">
           TTS Benchmark · 3 runs per provider · 5 probes daily
