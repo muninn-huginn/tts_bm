@@ -17,7 +17,7 @@ const elevenlabsAdapter: TTSProviderAdapter = {
     }
 
     const voiceId = config.voiceId || "21m00Tcm4TlvDq8ikWAM";
-    const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`;
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?optimize_streaming_latency=4&output_format=pcm_22050`;
 
     return measureHttpTTFB(url, {
       method: "POST",
