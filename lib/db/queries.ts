@@ -1,6 +1,6 @@
 import { db } from "./index";
 import { probeResults } from "./schema";
-import { eq, desc, sql, and, gte, lte, or, isNotNull } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte, or, isNotNull, inArray } from "drizzle-orm";
 import { providers } from "@/config/providers";
 import { probeConfig } from "@/config/probe";
 
@@ -165,13 +165,10 @@ export async function getHistory(
   const sevenDays = 7 * 24 * 60 * 60 * 1000;
   const oneDay = 24 * 60 * 60 * 1000;
 
-  // For ranges > 7 days, aggregate into 1-hour buckets
-  // For ranges > 1 day, aggregate into 5-min buckets
-  // Otherwise return raw data
-  if (rangeMs > sevenDays) {
+  // With 5 probes/day (15 rows/provider/day), raw data is fine for up to 30d
+  // Only aggregate for ranges > 30 days
+  if (rangeMs > 30 * oneDay) {
     return getAggregatedHistory(providerIds, start, end, "1 hour");
-  } else if (rangeMs > oneDay) {
-    return getAggregatedHistory(providerIds, start, end, "5 minutes");
   }
 
   // Raw data
@@ -186,7 +183,7 @@ export async function getHistory(
     .from(probeResults)
     .where(
       and(
-        sql`${probeResults.providerId} = ANY(${providerIds})`,
+        inArray(probeResults.providerId, providerIds),
         gte(probeResults.timestamp, start),
         lte(probeResults.timestamp, end),
         gte(probeResults.statusCode, 200),
@@ -219,19 +216,20 @@ async function getAggregatedHistory(
   providerIds: string[],
   start: Date,
   end: Date,
-  bucket: string
+  bucket: "1 hour" | "5 minutes"
 ) {
+  // Use raw SQL for date_trunc interval and build the provider list safely
   const rows = await db.execute(sql`
     SELECT
       provider_id,
-      date_trunc(${bucket}, timestamp) as bucket_time,
+      date_trunc(${sql.raw(`'${bucket}'`)}, timestamp) as bucket_time,
       percentile_cont(0.5) WITHIN GROUP (ORDER BY ttfb_ms) as p50,
       percentile_cont(0.95) WITHIN GROUP (ORDER BY ttfb_ms) as p95,
       percentile_cont(0.99) WITHIN GROUP (ORDER BY ttfb_ms) as p99
     FROM probe_results
-    WHERE provider_id = ANY(${providerIds})
-      AND timestamp >= ${start.toISOString()}
-      AND timestamp <= ${end.toISOString()}
+    WHERE provider_id IN (${sql.join(providerIds.map(id => sql`${id}`), sql`, `)})
+      AND timestamp >= ${start}
+      AND timestamp <= ${end}
       AND status_code >= 200
       AND status_code < 300
     GROUP BY provider_id, bucket_time
