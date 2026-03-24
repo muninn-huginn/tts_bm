@@ -12,6 +12,7 @@ import {
   Line,
 } from "recharts";
 import { TimeRangePicker } from "./time-range-picker";
+import { ChartLegend, useChartFilter } from "./chart-legend";
 import { providers as providerConfig } from "@/config/providers";
 
 const COLORS: Record<string, string> = {
@@ -48,7 +49,9 @@ export function TTFBChart({
   onTimeRangeChange,
   onCustomRange,
 }: TTFBChartProps) {
-  const activeProviders = data.filter((d) => d.points.length > 0);
+  const { hidden, toggle } = useChartFilter();
+  const allActive = data.filter((d) => d.points.length > 0);
+  const activeProviders = allActive.filter((d) => !hidden.has(d.providerId));
 
   if (activeProviders.length === 0) {
     return (
@@ -209,13 +212,12 @@ export function TTFBChart({
         </ResponsiveContainer>
       </div>
 
-      <div className="px-[22px] pb-[18px] flex flex-wrap gap-3.5">
-        {activeProviders.map((p) => (
-          <div key={p.providerId} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-            <div className="w-2 h-2 rounded-[2px]" style={{ background: COLORS[p.providerId] || "var(--text-muted)" }} />
-            {nameMap.get(p.providerId) || p.providerId}
-          </div>
-        ))}
+      <div className="px-[22px] pb-[18px]">
+        <ChartLegend
+          providerIds={allActive.map((p) => p.providerId)}
+          hidden={hidden}
+          onToggle={toggle}
+        />
       </div>
     </div>
   );

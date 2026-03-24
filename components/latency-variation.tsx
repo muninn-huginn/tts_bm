@@ -1,5 +1,6 @@
 "use client";
 
+import { ChartLegend, useChartFilter } from "./chart-legend";
 import { providers as providerConfig } from "@/config/providers";
 
 interface BatchRun {
@@ -25,9 +26,11 @@ const COLORS: Record<string, string> = {
 };
 
 export function LatencyVariation({ providers }: { providers: Provider[] }) {
-  const withRuns = providers.filter((p) => p.batch && p.batch.runs.length > 0);
+  const { hidden, toggle } = useChartFilter();
+  const allWithRuns = providers.filter((p) => p.batch && p.batch.runs.length > 0);
+  const withRuns = allWithRuns.filter((p) => !hidden.has(p.id));
 
-  if (withRuns.length === 0) return null;
+  if (allWithRuns.length === 0) return null;
 
   // Find global max for scaling
   const allTtfbs = withRuns.flatMap((p) => p.batch!.runs.map((r) => r.ttfbMs));
@@ -182,6 +185,10 @@ export function LatencyVariation({ providers }: { providers: Provider[] }) {
             );
           })}
         </svg>
+      </div>
+
+      <div className="px-[22px] pb-[18px]">
+        <ChartLegend providerIds={allWithRuns.map((p) => p.id)} hidden={hidden} onToggle={toggle} />
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   ErrorBar,
 } from "recharts";
+import { ChartLegend, useChartFilter } from "./chart-legend";
 import { providers as providerConfig } from "@/config/providers";
 
 const COLORS: Record<string, string> = {
@@ -64,7 +65,9 @@ export function TimeOfDayChart({ data }: TimeOfDayChartProps) {
     );
   }
 
-  const activeProviders = [...new Set(data.filter((d) => d.points.length > 0).map((d) => d.providerId))];
+  const { hidden, toggle } = useChartFilter();
+  const allProviderIds = [...new Set(data.filter((d) => d.points.length > 0).map((d) => d.providerId))];
+  const activeProviders = allProviderIds.filter((id) => !hidden.has(id));
 
   // Build chart data: one entry per hour, with avg per provider
   const chartData = hours.map((hour) => {
@@ -195,16 +198,8 @@ export function TimeOfDayChart({ data }: TimeOfDayChartProps) {
         </ResponsiveContainer>
       </div>
 
-      <div className="px-[22px] pb-[18px] flex flex-wrap gap-3.5">
-        {activeProviders.map((id) => (
-          <div key={id} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-            <div
-              className="w-2 h-2 rounded-[2px]"
-              style={{ background: COLORS[id] || "var(--text-muted)" }}
-            />
-            {nameMap.get(id) || id}
-          </div>
-        ))}
+      <div className="px-[22px] pb-[18px]">
+        <ChartLegend providerIds={allProviderIds} hidden={hidden} onToggle={toggle} />
       </div>
     </div>
   );
