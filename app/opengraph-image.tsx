@@ -1,44 +1,33 @@
 import { ImageResponse } from "next/og";
+import { providers as providerConfig } from "@/config/providers";
 
-export const runtime = "edge";
 export const alt = "TTS Benchmark — Real-time TTS Latency Monitoring";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+export const revalidate = 3600;
 
 export default async function OGImage() {
-  // Fetch live data
-  let providers: {
-    name: string;
-    status: string;
-    batch?: { avgTtfb: number } | null;
-    stats: { p50: number };
-  }[] = [];
+  let providerData: { name: string; ttfb: number; status: string }[] = [];
 
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/results`, {
-      next: { revalidate: 3600 },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      providers = data.providers || [];
-    }
+    const { getLatestResults } = await import("@/lib/db/queries");
+    const { calculateStatus } = await import("@/lib/status");
+    const results = await getLatestResults();
+
+    providerData = results
+      .map((r) => ({
+        name: r.name,
+        ttfb: r.stats.p50,
+        status: calculateStatus(r.stats.p50, r._errorRate, r._last3),
+      }))
+      .filter((p) => p.ttfb > 0)
+      .sort((a, b) => a.ttfb - b.ttfb);
   } catch {
-    // Fall back to static image
+    // Fallback
   }
 
-  const sorted = [...providers].sort(
-    (a, b) =>
-      (a.batch?.avgTtfb || a.stats.p50 || Infinity) -
-      (b.batch?.avgTtfb || b.stats.p50 || Infinity)
-  );
-
-  const fastest = sorted[0];
-  const fastestTtfb = fastest
-    ? fastest.batch?.avgTtfb || fastest.stats.p50
-    : null;
+  const fastest = providerData[0];
+  const maxTtfb = Math.max(...providerData.map((p) => p.ttfb), 1);
 
   const barColors: Record<string, string> = {
     good: "#00A861",
@@ -56,24 +45,16 @@ export default async function OGImage() {
           flexDirection: "column",
           background: "#FCFCFC",
           fontFamily: "system-ui, sans-serif",
-          padding: "60px 72px",
+          padding: "56px 64px",
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "14px",
-            marginBottom: "8px",
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div
             style={{
-              width: "36px",
-              height: "36px",
+              width: "32px",
+              height: "32px",
               background: "#111",
-              borderRadius: "8px",
+              borderRadius: "7px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -85,142 +66,115 @@ export default async function OGImage() {
               stroke="white"
               strokeWidth="2.5"
               strokeLinecap="round"
-              width="20"
-              height="20"
+              width="18"
+              height="18"
             >
               <path d="M12 3v18M3 12l4-4v8M21 12l-4-4v8" />
             </svg>
           </div>
-          <span
-            style={{
-              fontSize: "22px",
-              fontWeight: 600,
-              color: "#111",
-              letterSpacing: "-0.3px",
-            }}
-          >
+          <span style={{ fontSize: "20px", fontWeight: 600, color: "#111" }}>
             TTS Benchmark
           </span>
         </div>
 
-        {/* Title */}
-        <div
-          style={{
-            fontSize: "52px",
-            fontWeight: 700,
-            color: "#111",
-            letterSpacing: "-1.5px",
-            lineHeight: 1.15,
-            marginBottom: "6px",
-          }}
-        >
-          Real-time TTS Latency
-        </div>
-        <div
-          style={{
-            fontSize: "20px",
-            color: "#666",
-            marginBottom: "44px",
-          }}
-        >
-          Time-to-first-byte benchmarks across leading providers
+        <div style={{ display: "flex", flexDirection: "column", marginTop: "4px" }}>
+          <span
+            style={{
+              fontSize: "48px",
+              fontWeight: 700,
+              color: "#111",
+              letterSpacing: "-1.5px",
+              lineHeight: 1.15,
+            }}
+          >
+            Real-time TTS Latency
+          </span>
+          <span style={{ fontSize: "19px", color: "#666", marginTop: "4px" }}>
+            Time-to-first-byte benchmarks across leading providers
+          </span>
         </div>
 
-        {/* Provider bars */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "14px",
+            gap: "12px",
             flex: 1,
+            marginTop: "36px",
           }}
         >
-          {sorted.slice(0, 5).map((p) => {
-            const ttfb = p.batch?.avgTtfb || p.stats.p50 || 0;
-            const maxBar = Math.max(
-              ...sorted.slice(0, 5).map((s) => s.batch?.avgTtfb || s.stats.p50 || 0),
-              1
-            );
-            const width = Math.max((ttfb / maxBar) * 100, 5);
+          {providerData.slice(0, 5).map((p) => {
+            const widthPct = Math.max((p.ttfb / maxTtfb) * 100, 5);
             const color = barColors[p.status] || "#999";
 
             return (
               <div
                 key={p.name}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "16px",
-                }}
+                style={{ display: "flex", alignItems: "center", gap: "14px" }}
               >
-                <div
+                <span
                   style={{
-                    width: "160px",
-                    fontSize: "17px",
+                    width: "180px",
+                    fontSize: "16px",
                     fontWeight: 600,
                     color: "#111",
-                    flexShrink: 0,
                   }}
                 >
                   {p.name}
-                </div>
+                </span>
                 <div
                   style={{
                     flex: 1,
-                    height: "32px",
+                    height: "28px",
                     background: "#F2F2F2",
-                    borderRadius: "6px",
-                    overflow: "hidden",
+                    borderRadius: "5px",
                     display: "flex",
+                    alignItems: "stretch",
                   }}
                 >
                   <div
                     style={{
-                      width: `${width}%`,
-                      height: "100%",
+                      width: `${widthPct}%`,
                       background: color,
-                      borderRadius: "6px",
-                      opacity: 0.7,
+                      borderRadius: "5px",
+                      opacity: 0.75,
+                      display: "flex",
                     }}
                   />
                 </div>
-                <div
+                <span
                   style={{
                     width: "80px",
                     textAlign: "right",
-                    fontSize: "18px",
+                    fontSize: "17px",
                     fontWeight: 700,
                     color: "#111",
                     fontFamily: "monospace",
-                    flexShrink: 0,
                   }}
                 >
-                  {ttfb > 0 ? `${ttfb}ms` : "—"}
-                </div>
+                  {p.ttfb}ms
+                </span>
               </div>
             );
           })}
         </div>
 
-        {/* Footer */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginTop: "20px",
-            paddingTop: "20px",
+            marginTop: "16px",
+            paddingTop: "16px",
             borderTop: "1px solid #EBEBEB",
           }}
         >
-          <span style={{ fontSize: "15px", color: "#999" }}>
-            {fastestTtfb
-              ? `Fastest: ${fastest.name} at ${fastestTtfb}ms`
+          <span style={{ fontSize: "14px", color: "#999" }}>
+            {fastest
+              ? `Fastest: ${fastest.name} at ${fastest.ttfb}ms`
               : "Live benchmarks updated 5x daily"}
           </span>
-          <span style={{ fontSize: "15px", color: "#999" }}>
-            ttfb.sh
-          </span>
+          <span style={{ fontSize: "14px", color: "#999" }}>ttfb.sh</span>
         </div>
       </div>
     ),
