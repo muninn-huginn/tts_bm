@@ -89,4 +89,16 @@ export const providers: ProviderConfig[] = [
       voiceId: "e3596645-b1af-469e-b857-f18ddedc7652", // Oliver - Neutral (en_gb)
     },
   },
+  {
+    id: "smallest-lightning",
+    name: "Smallest Lightning",
+    enabled: true,
+    probeIntervalSeconds: 60,
+    adapter: "smallest",
+    config: {
+      apiKeyEnv: "SMALLEST_API_KEY",
+      model: "lightning-v3.1",
+      voiceId: "magnus",
+    },
+  },
 ];

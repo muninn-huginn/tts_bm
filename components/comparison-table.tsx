@@ -24,6 +24,7 @@ const ABBREVIATIONS: Record<string, string> = {
   deepgram: "Dg",
   fish: "Fs",
   mistral: "Mi",
+  "smallest-lightning": "SL",
 };
 
 type SortKey = "avgTtfb" | "p50" | "p95" | "p99" | "spread";

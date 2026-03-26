@@ -10,5 +10,6 @@ import "./playht";
 import "./lmnt";
 import "./fish";
 import "./mistral";
+import "./smallest";
 
 export { getAdapter, getAllAdapterIds } from "./registry";
