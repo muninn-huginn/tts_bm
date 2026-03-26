@@ -12,7 +12,7 @@ interface Provider {
   id: string;
   name: string;
   status: string;
-  stats: { p50: number; p95: number; p99: number; uptime24h: number };
+  stats: { min: number; avg: number; p50: number; p95: number; p99: number; uptime24h: number };
   latest: { ttfbMs: number; totalTimeMs: number; statusCode: number; timestamp: string } | null;
   batch?: { runs: BatchRun[]; avgTtfb: number; avgTotalTime: number } | null;
 }
@@ -27,7 +27,7 @@ const ABBREVIATIONS: Record<string, string> = {
   "smallest-lightning": "SL",
 };
 
-type SortKey = "avgTtfb" | "p50" | "p95" | "p99" | "spread";
+type SortKey = "min" | "avg" | "p50" | "p95" | "p99" | "spread";
 
 /**
  * Map a value to a heatmap color.
@@ -62,7 +62,7 @@ function heatTextColor(value: number, min: number, max: number): string {
 }
 
 export function ComparisonTable({ providers }: { providers: Provider[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>("avgTtfb");
+  const [sortKey, setSortKey] = useState<SortKey>("min");
   const [sortAsc, setSortAsc] = useState(true);
 
   // Compute derived values
@@ -86,7 +86,8 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
   const sorted = [...rows].sort((a, b) => {
     let aVal: number, bVal: number;
     switch (sortKey) {
-      case "avgTtfb": aVal = a.avgTtfb; bVal = b.avgTtfb; break;
+      case "min": aVal = a.stats.min; bVal = b.stats.min; break;
+      case "avg": aVal = a.stats.avg; bVal = b.stats.avg; break;
       case "p50": aVal = a.stats.p50; bVal = b.stats.p50; break;
       case "p95": aVal = a.stats.p95; bVal = b.stats.p95; break;
       case "p99": aVal = a.stats.p99; bVal = b.stats.p99; break;
@@ -98,7 +99,8 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
 
   // Compute column ranges for heatmap
   const ranges = {
-    avgTtfb: { min: Math.min(...rows.map((r) => r.avgTtfb).filter(Boolean)), max: Math.max(...rows.map((r) => r.avgTtfb)) },
+    min: { min: Math.min(...rows.map((r) => r.stats.min).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.min)) },
+    avg: { min: Math.min(...rows.map((r) => r.stats.avg).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.avg)) },
     p50: { min: Math.min(...rows.map((r) => r.stats.p50).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p50)) },
     p95: { min: Math.min(...rows.map((r) => r.stats.p95).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p95)) },
     p99: { min: Math.min(...rows.map((r) => r.stats.p99).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p99)) },
@@ -137,8 +139,11 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
         <thead>
           <tr>
             <th className={thBase + " text-left"} style={{ width: 170 }}>Provider</th>
-            <th className={thBase + " text-center"} onClick={() => handleSort("avgTtfb")}>
-              Avg TTFB{sortIndicator("avgTtfb")}
+            <th className={thBase + " text-center"} onClick={() => handleSort("min")}>
+              Min{sortIndicator("min")}
+            </th>
+            <th className={thBase + " text-center"} onClick={() => handleSort("avg")}>
+              Avg{sortIndicator("avg")}
             </th>
             <th className={thBase + " text-center"} onClick={() => handleSort("p50")}>
               P50{sortIndicator("p50")}
@@ -175,7 +180,8 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
                   </div>
                 </div>
               </td>
-              <td className="px-[14px] py-3">{renderCell(p.avgTtfb, ranges.avgTtfb)}</td>
+              <td className="px-[14px] py-3">{renderCell(p.stats.min, ranges.min)}</td>
+              <td className="px-[14px] py-3">{renderCell(p.stats.avg, ranges.avg)}</td>
               <td className="px-[14px] py-3">{renderCell(p.stats.p50, ranges.p50)}</td>
               <td className="px-[14px] py-3">{renderCell(p.stats.p95, ranges.p95)}</td>
               <td className="px-[14px] py-3">{renderCell(p.stats.p99, ranges.p99)}</td>
@@ -184,7 +190,7 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-[18px] py-8 text-center text-text-muted text-sm">
+              <td colSpan={7} className="px-[18px] py-8 text-center text-text-muted text-sm">
                 No data yet
               </td>
             </tr>

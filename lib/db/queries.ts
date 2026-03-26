@@ -63,6 +63,8 @@ export async function getLatestResults() {
         .orderBy(probeResults.ttfbMs);
 
       const ttfbValues = hourRows.map((r) => r.ttfbMs);
+      const min = ttfbValues.length > 0 ? ttfbValues[0] : 0;
+      const avg = ttfbValues.length > 0 ? Math.round(ttfbValues.reduce((s, v) => s + v, 0) / ttfbValues.length) : 0;
       const p50 = percentile(ttfbValues, 50);
       const p95 = percentile(ttfbValues, 95);
       const p99 = percentile(ttfbValues, 99);
@@ -143,7 +145,7 @@ export async function getLatestResults() {
               timestamp: latest.timestamp.toISOString(),
             }
           : null,
-        stats: { p50, p95, p99, uptime24h },
+        stats: { min, avg, p50, p95, p99, uptime24h },
         _errorRate: hourErrorRate,
         _last3: last3.map((r) => r.statusCode),
       };
