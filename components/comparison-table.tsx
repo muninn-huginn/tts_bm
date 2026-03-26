@@ -23,6 +23,7 @@ const ABBREVIATIONS: Record<string, string> = {
   elevenlabs: "EL",
   deepgram: "Dg",
   fish: "Fs",
+  mistral: "Mi",
 };
 
 type SortKey = "avgTtfb" | "p50" | "p95" | "p99" | "spread";
