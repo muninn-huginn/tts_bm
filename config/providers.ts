@@ -77,4 +77,16 @@ export const providers: ProviderConfig[] = [
       referenceId: "7f92f8afb8ec43bf81429cc1c9199cb1",
     },
   },
+  {
+    id: "mistral",
+    name: "Mistral Voxtral",
+    enabled: true,
+    probeIntervalSeconds: 60,
+    adapter: "mistral",
+    config: {
+      apiKeyEnv: "MISTRAL_API_KEY",
+      model: "voxtral-mini-tts-2603",
+      voiceId: "e3596645-b1af-469e-b857-f18ddedc7652", // Oliver - Neutral (en_gb)
+    },
+  },
 ];

@@ -9,5 +9,6 @@ import "./polly";
 import "./playht";
 import "./lmnt";
 import "./fish";
+import "./mistral";
 
 export { getAdapter, getAllAdapterIds } from "./registry";
