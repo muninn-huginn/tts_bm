@@ -30,34 +30,20 @@ const ABBREVIATIONS: Record<string, string> = {
 type SortKey = "min" | "avg" | "p50" | "p95" | "p99" | "spread";
 
 /**
- * Map a value to a heatmap color.
- * Lower = green, medium = yellow, high = red.
+ * Absolute thresholds for TTFB heatmap:
+ * Green < 300ms, Orange 300–500ms, Red > 500ms
  */
-function heatColor(value: number, min: number, max: number): string {
-  if (value === 0 || max === min) return "var(--surface)";
-  const ratio = Math.min((value - min) / (max - min), 1);
-
-  // Green (good) → Yellow (fair) → Red (bad)
-  if (ratio < 0.5) {
-    const t = ratio * 2;
-    const r = Math.round(0 + t * 217);
-    const g = Math.round(168 + t * (119 - 168));
-    const b = Math.round(97 + t * (6 - 97));
-    return `rgba(${r}, ${g}, ${b}, 0.15)`;
-  } else {
-    const t = (ratio - 0.5) * 2;
-    const r = Math.round(217 + t * (220 - 217));
-    const g = Math.round(119 + t * (38 - 119));
-    const b = Math.round(6 + t * (38 - 6));
-    return `rgba(${r}, ${g}, ${b}, 0.18)`;
-  }
+function heatColor(value: number): string {
+  if (value === 0) return "var(--surface)";
+  if (value < 300) return "rgba(0, 168, 97, 0.15)";
+  if (value < 500) return "rgba(217, 119, 6, 0.15)";
+  return "rgba(220, 38, 38, 0.18)";
 }
 
-function heatTextColor(value: number, min: number, max: number): string {
-  if (value === 0 || max === min) return "var(--text-muted)";
-  const ratio = Math.min((value - min) / (max - min), 1);
-  if (ratio < 0.35) return "#056b3a";
-  if (ratio < 0.65) return "#92400e";
+function heatTextColor(value: number): string {
+  if (value === 0) return "var(--text-muted)";
+  if (value < 300) return "#056b3a";
+  if (value < 500) return "#92400e";
   return "#991b1b";
 }
 
@@ -97,16 +83,6 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
     return sortAsc ? aVal - bVal : bVal - aVal;
   });
 
-  // Compute column ranges for heatmap
-  const ranges = {
-    min: { min: Math.min(...rows.map((r) => r.stats.min).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.min)) },
-    avg: { min: Math.min(...rows.map((r) => r.stats.avg).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.avg)) },
-    p50: { min: Math.min(...rows.map((r) => r.stats.p50).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p50)) },
-    p95: { min: Math.min(...rows.map((r) => r.stats.p95).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p95)) },
-    p99: { min: Math.min(...rows.map((r) => r.stats.p99).filter(Boolean)), max: Math.max(...rows.map((r) => r.stats.p99)) },
-    spread: { min: Math.min(...rows.map((r) => r.spread)), max: Math.max(...rows.map((r) => r.spread)) },
-  };
-
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(!sortAsc);
     else { setSortKey(key); setSortAsc(true); }
@@ -118,14 +94,14 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
     return sortKey === key ? (sortAsc ? " ↑" : " ↓") : "";
   }
 
-  function renderCell(value: number, range: { min: number; max: number }, suffix = "ms") {
+  function renderCell(value: number, suffix = "ms") {
     if (value === 0) return <span className="text-text-muted">—</span>;
     return (
       <div
         className="rounded-[4px] px-2 py-1 font-mono text-[12px] font-semibold text-center"
         style={{
-          background: heatColor(value, range.min, range.max),
-          color: heatTextColor(value, range.min, range.max),
+          background: heatColor(value),
+          color: heatTextColor(value),
         }}
       >
         {value >= 1000 && suffix === "ms" ? `${(value / 1000).toFixed(1)}s` : `${value}${suffix}`}
@@ -180,12 +156,12 @@ export function ComparisonTable({ providers }: { providers: Provider[] }) {
                   </div>
                 </div>
               </td>
-              <td className="px-[14px] py-3">{renderCell(p.stats.min, ranges.min)}</td>
-              <td className="px-[14px] py-3">{renderCell(p.stats.avg, ranges.avg)}</td>
-              <td className="px-[14px] py-3">{renderCell(p.stats.p50, ranges.p50)}</td>
-              <td className="px-[14px] py-3">{renderCell(p.stats.p95, ranges.p95)}</td>
-              <td className="px-[14px] py-3">{renderCell(p.stats.p99, ranges.p99)}</td>
-              <td className="px-[14px] py-3">{renderCell(p.spread, ranges.spread)}</td>
+              <td className="px-[14px] py-3">{renderCell(p.stats.min)}</td>
+              <td className="px-[14px] py-3">{renderCell(p.stats.avg)}</td>
+              <td className="px-[14px] py-3">{renderCell(p.stats.p50)}</td>
+              <td className="px-[14px] py-3">{renderCell(p.stats.p95)}</td>
+              <td className="px-[14px] py-3">{renderCell(p.stats.p99)}</td>
+              <td className="px-[14px] py-3">{renderCell(p.spread)}</td>
             </tr>
           ))}
           {sorted.length === 0 && (
